@@ -1,0 +1,1706 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Biblioteca Virtual — Lumina</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1a1208;
+    --parchment: #f5edd6;
+    --gold: #c9922a;
+    --gold-light: #e8b84b;
+    --cream: #fdf6e3;
+    --brown: #5c3d1e;
+    --brown-light: #8b6239;
+    --red: #8b2020;
+    --green: #1e5c2e;
+    --shadow: rgba(26,18,8,0.18);
+    --glass: rgba(245,237,214,0.7);
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--ink);
+    color: var(--ink);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ─── FONDO ANIMADO ─── */
+  .bg-scene {
+    position: fixed; inset: 0; z-index: 0;
+    background:
+      radial-gradient(ellipse 80% 60% at 20% 10%, #2e1a08 0%, transparent 60%),
+      radial-gradient(ellipse 60% 80% at 80% 80%, #1a0e04 0%, transparent 50%),
+      #0d0804;
+    overflow: hidden;
+  }
+  .bg-scene::before {
+    content:'';
+    position:absolute; inset:0;
+    background-image:
+      repeating-linear-gradient(0deg, transparent, transparent 59px, rgba(201,146,42,.06) 60px),
+      repeating-linear-gradient(90deg, transparent, transparent 59px, rgba(201,146,42,.06) 60px);
+  }
+  .candle {
+    position:absolute; bottom:0; width:3px; border-radius:2px 2px 0 0;
+    background: linear-gradient(to top, var(--gold), #ffeaa0);
+    animation: flicker 3s ease-in-out infinite alternate;
+    transform-origin: bottom center;
+  }
+  .candle::after {
+    content:''; position:absolute; top:-16px; left:50%; transform:translateX(-50%);
+    width:14px; height:22px;
+    background: radial-gradient(ellipse, #fff8c0 20%, #ffcc44 50%, #ff8800 80%, transparent 100%);
+    border-radius: 50% 50% 40% 40%;
+    filter: blur(2px);
+    animation: flame 1.5s ease-in-out infinite alternate;
+  }
+  @keyframes flicker { 0%{transform:scaleX(1)} 50%{transform:scaleX(.97)} 100%{transform:scaleX(1.02)} }
+  @keyframes flame { 0%{transform:translateX(-50%) scaleY(1) scaleX(1)} 100%{transform:translateX(-52%) scaleY(1.1) scaleX(.9)} }
+
+  /* ─── CAPAS ─── */
+  .layer {
+    position: relative; z-index: 1;
+    min-height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  #authScreen { display: flex; }
+  #dashboard { display: none; }
+
+  /* ─── TARJETA PRINCIPAL ─── */
+  .card {
+    background: var(--glass);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(201,146,42,.35);
+    border-radius: 4px;
+    box-shadow: 0 30px 80px rgba(0,0,0,.7), inset 0 1px 0 rgba(255,255,255,.15);
+    padding: 48px 52px;
+    width: 100%; max-width: 480px;
+    position: relative;
+    animation: cardIn .7s cubic-bezier(.22,1,.36,1);
+  }
+  @keyframes cardIn { from{opacity:0;transform:translateY(30px)} to{opacity:1;transform:none} }
+
+  .card-corner {
+    position:absolute; width:20px; height:20px;
+    border-color: var(--gold); border-style:solid;
+  }
+  .card-corner.tl { top:10px; left:10px; border-width:2px 0 0 2px; }
+  .card-corner.tr { top:10px; right:10px; border-width:2px 2px 0 0; }
+  .card-corner.bl { bottom:10px; left:10px; border-width:0 0 2px 2px; }
+  .card-corner.br { bottom:10px; right:10px; border-width:0 2px 2px 0; }
+
+  /* ─── LOGO ─── */
+  .logo-area { text-align:center; margin-bottom:36px; }
+  .logo-icon {
+    font-size:48px; display:block; margin-bottom:8px;
+    filter: drop-shadow(0 0 12px rgba(201,146,42,.6));
+    animation: glow 3s ease-in-out infinite alternate;
+  }
+  @keyframes glow { 0%{filter:drop-shadow(0 0 8px rgba(201,146,42,.4))} 100%{filter:drop-shadow(0 0 20px rgba(201,146,42,.9))} }
+
+  .logo-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 2.2rem; color: var(--ink);
+    letter-spacing: .05em;
+  }
+  .logo-sub {
+    font-size: .78rem; color: var(--brown-light);
+    letter-spacing: .25em; text-transform:uppercase;
+    margin-top:4px;
+  }
+  .divider {
+    width:60px; height:2px; margin:14px auto 0;
+    background: linear-gradient(90deg, transparent, var(--gold), transparent);
+  }
+
+  /* ─── TABS ─── */
+  .tabs { display:flex; gap:4px; margin-bottom:28px; background:rgba(26,18,8,.12); border-radius:3px; padding:4px; }
+  .tab-btn {
+    flex:1; padding:9px; border:none; background:transparent; cursor:pointer;
+    font-family:'DM Sans',sans-serif; font-size:.85rem; font-weight:500;
+    color:var(--brown); border-radius:2px; transition:.25s;
+  }
+  .tab-btn.active {
+    background: var(--gold); color:#fff;
+    box-shadow: 0 2px 8px rgba(201,146,42,.4);
+  }
+
+  /* ─── FORM ─── */
+  .form-group { margin-bottom:18px; }
+  label { display:block; font-size:.78rem; font-weight:500; color:var(--brown); letter-spacing:.08em; text-transform:uppercase; margin-bottom:6px; }
+  input, select, textarea {
+    width:100%; padding:11px 14px;
+    border: 1.5px solid rgba(92,61,30,.25);
+    border-radius:3px; background:rgba(255,255,255,.6);
+    font-family:'DM Sans',sans-serif; font-size:.95rem; color:var(--ink);
+    outline:none; transition:.2s;
+  }
+  input:focus, select:focus, textarea:focus {
+    border-color:var(--gold); background:rgba(255,255,255,.9);
+    box-shadow: 0 0 0 3px rgba(201,146,42,.15);
+  }
+  textarea { resize:vertical; min-height:90px; }
+
+  .btn {
+    width:100%; padding:13px; border:none; border-radius:3px;
+    font-family:'DM Sans',sans-serif; font-size:.95rem; font-weight:500;
+    cursor:pointer; transition:.2s; letter-spacing:.04em;
+  }
+  .btn-gold {
+    background: linear-gradient(135deg, var(--gold) 0%, var(--gold-light) 100%);
+    color:#fff; box-shadow: 0 4px 16px rgba(201,146,42,.4);
+  }
+  .btn-gold:hover { transform:translateY(-1px); box-shadow: 0 6px 20px rgba(201,146,42,.55); }
+  .btn-outline { background:transparent; border:1.5px solid var(--gold); color:var(--gold); margin-top:8px; }
+  .btn-outline:hover { background:rgba(201,146,42,.1); }
+  .btn-red { background:#8b2020; color:#fff; margin-top:4px; }
+  .btn-green { background:#1e5c2e; color:#fff; }
+
+  .msg { font-size:.85rem; text-align:center; margin-top:14px; padding:10px; border-radius:3px; }
+  .msg.error { background:rgba(139,32,32,.1); color:var(--red); border:1px solid rgba(139,32,32,.2); }
+  .msg.success { background:rgba(30,92,46,.1); color:var(--green); border:1px solid rgba(30,92,46,.2); }
+
+  /* ─── DASHBOARD ─── */
+  .dashboard {
+    min-height:100vh; display:none; flex-direction:column;
+    background: var(--cream);
+  }
+  .dashboard.active { display:flex; }
+
+  .topbar {
+    background: var(--ink);
+    padding:0 32px;
+    display:flex; align-items:center; justify-content:space-between;
+    height:60px;
+    box-shadow: 0 2px 20px rgba(0,0,0,.3);
+  }
+  .topbar-brand {
+    font-family:'Playfair Display',serif; font-size:1.35rem; color:var(--gold);
+    display:flex; align-items:center; gap:10px;
+  }
+  .topbar-user { font-size:.85rem; color:rgba(245,237,214,.7); display:flex; align-items:center; gap:14px; }
+  .badge-role {
+    padding:3px 10px; border-radius:20px; font-size:.72rem; font-weight:500; letter-spacing:.05em;
+  }
+  .badge-admin { background:rgba(201,146,42,.2); color:var(--gold-light); border:1px solid rgba(201,146,42,.3); }
+  .badge-member { background:rgba(30,92,46,.2); color:#4caf70; border:1px solid rgba(30,92,46,.3); }
+
+  .logout-btn {
+    padding:6px 14px; background:transparent; border:1px solid rgba(245,237,214,.2);
+    color:rgba(245,237,214,.6); border-radius:3px; cursor:pointer; font-size:.8rem;
+    font-family:'DM Sans',sans-serif; transition:.2s;
+  }
+  .logout-btn:hover { border-color:var(--gold); color:var(--gold); }
+
+  .dash-content { flex:1; padding:36px 40px; max-width:1100px; width:100%; margin:0 auto; }
+
+  .section-title {
+    font-family:'Playfair Display',serif; font-size:1.6rem; color:var(--ink);
+    margin-bottom:6px;
+  }
+  .section-sub { color:var(--brown-light); font-size:.88rem; margin-bottom:28px; }
+
+  /* ─── PANEL TABS ─── */
+  .panel-tabs { display:flex; gap:0; margin-bottom:30px; border-bottom:2px solid rgba(92,61,30,.15); }
+  .panel-tab {
+    padding:10px 22px; border:none; background:transparent; cursor:pointer;
+    font-family:'DM Sans',sans-serif; font-size:.9rem; color:var(--brown-light);
+    border-bottom:2px solid transparent; margin-bottom:-2px; transition:.2s;
+  }
+  .panel-tab.active { color:var(--gold); border-bottom-color:var(--gold); font-weight:500; }
+
+  /* ─── FORM CARD ─── */
+  .form-card {
+    background:#fff; border:1px solid rgba(92,61,30,.12); border-radius:4px;
+    padding:30px; box-shadow:0 2px 12px rgba(0,0,0,.06); margin-bottom:30px;
+  }
+  .form-row { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+
+  /* ─── LIBRO GRID ─── */
+  .books-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:20px; }
+  .book-card {
+    background:#fff; border:1px solid rgba(92,61,30,.12); border-radius:4px;
+    overflow:hidden; box-shadow:0 2px 10px rgba(0,0,0,.06);
+    transition:.25s; cursor:pointer; position:relative;
+  }
+  .book-card:hover { transform:translateY(-4px); box-shadow:0 8px 24px rgba(0,0,0,.12); }
+
+  .book-spine {
+    height:6px;
+    background: linear-gradient(90deg, var(--gold), var(--gold-light));
+  }
+  .book-body { padding:18px; }
+  .book-title { font-family:'Playfair Display',serif; font-size:1.05rem; color:var(--ink); margin-bottom:4px; font-weight:700; }
+  .book-author { font-size:.82rem; color:var(--brown-light); margin-bottom:10px; }
+  .book-cat {
+    display:inline-block; padding:2px 9px; border-radius:20px; font-size:.72rem;
+    background:rgba(201,146,42,.12); color:var(--brown); border:1px solid rgba(201,146,42,.2);
+    margin-bottom:10px;
+  }
+  .book-desc { font-size:.84rem; color:#555; line-height:1.55; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
+  .book-actions { display:flex; gap:8px; margin-top:12px; }
+  .book-btn {
+    flex:1; padding:7px; border:none; border-radius:3px; cursor:pointer;
+    font-size:.8rem; font-family:'DM Sans',sans-serif; font-weight:500; transition:.15s;
+  }
+  .book-btn.read { background:rgba(30,92,46,.1); color:var(--green); border:1px solid rgba(30,92,46,.2); }
+  .book-btn.del { background:rgba(139,32,32,.08); color:var(--red); border:1px solid rgba(139,32,32,.15); }
+  .book-btn:hover { opacity:.8; }
+
+  /* ─── MODAL ─── */
+  /* ─── LECTOR PANTALLA COMPLETA ─── */
+  .modal-overlay {
+    position:fixed; inset:0; background:#1a1208; z-index:100;
+    display:none; flex-direction:column;
+  }
+  .modal-overlay.open { display:flex; }
+
+  .reader-topbar {
+    background:#0d0804; border-bottom:1px solid rgba(201,146,42,.2);
+    padding:0 32px; height:56px; display:flex; align-items:center;
+    justify-content:space-between; flex-shrink:0;
+    box-shadow:0 2px 20px rgba(0,0,0,.5);
+  }
+  .reader-topbar-left { display:flex; align-items:center; gap:16px; }
+  .reader-back {
+    padding:7px 16px; background:transparent; border:1px solid rgba(201,146,42,.35);
+    color:var(--gold); border-radius:3px; cursor:pointer;
+    font-family:'DM Sans',sans-serif; font-size:.85rem; transition:.2s;
+  }
+  .reader-back:hover { background:rgba(201,146,42,.15); }
+  .reader-book-title {
+    font-family:'Playfair Display',serif; color:var(--parchment); font-size:1rem; opacity:.85;
+  }
+  .reader-book-author { font-size:.78rem; color:var(--gold); opacity:.7; }
+  .reader-controls { display:flex; align-items:center; gap:10px; }
+  .font-btn {
+    width:32px; height:32px; background:transparent;
+    border:1px solid rgba(201,146,42,.25); color:var(--gold-light);
+    border-radius:3px; cursor:pointer; font-size:.95rem; transition:.2s;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .font-btn:hover { background:rgba(201,146,42,.2); }
+
+  .reader-body {
+    flex:1; overflow-y:auto;
+    background:linear-gradient(180deg, #1a1208 0%, #120d06 100%);
+    padding:60px 20px;
+  }
+  .reader-page {
+    max-width:720px; margin:0 auto;
+    background:#fdf8ef;
+    border-radius:2px;
+    box-shadow: -8px 0 24px rgba(0,0,0,.5), 8px 0 24px rgba(0,0,0,.5), 0 0 80px rgba(0,0,0,.7),
+      inset 5px 0 15px rgba(92,61,30,.1), inset -5px 0 15px rgba(92,61,30,.1);
+    position:relative; min-height:80vh;
+  }
+  .reader-page::before {
+    content:''; position:absolute; left:0; top:0; bottom:0; width:7px;
+    background:linear-gradient(180deg, var(--gold) 0%, var(--brown) 50%, var(--gold) 100%);
+    border-radius:2px 0 0 2px;
+  }
+  .reader-header {
+    padding:56px 64px 32px 80px;
+    border-bottom:2px solid rgba(201,146,42,.15);
+    background:linear-gradient(180deg, #fffaed 0%, #fdf8ef 100%);
+    border-radius:2px 2px 0 0;
+  }
+  .reader-title {
+    font-family:'Playfair Display',serif; font-size:2.5rem; color:var(--ink);
+    line-height:1.2; margin-bottom:10px;
+  }
+  .reader-author {
+    font-family:'Playfair Display',serif; font-style:italic;
+    font-size:1.15rem; color:var(--brown-light); margin-bottom:18px;
+  }
+  .reader-meta-row { display:flex; gap:10px; flex-wrap:wrap; }
+  .reader-tag {
+    padding:3px 12px; border-radius:20px; font-size:.75rem;
+    background:rgba(201,146,42,.12); color:var(--brown);
+    border:1px solid rgba(201,146,42,.25); letter-spacing:.05em;
+  }
+  .reader-content {
+    padding:44px 64px 80px 80px;
+    font-family:'Playfair Display', Georgia, serif;
+    font-size:1.05rem;
+    line-height:2;
+    color:#2a1e0e;
+    white-space:pre-wrap;
+    word-break:break-word;
+  }
+  .reader-content.size-sm { font-size:.9rem; }
+  .reader-content.size-lg { font-size:1.2rem; }
+  .reader-content.size-xl { font-size:1.35rem; }
+
+  @media(max-width:600px) {
+    .reader-header { padding:32px 24px 24px 40px; }
+    .reader-content { padding:28px 24px 60px 40px; font-size:.95rem; }
+    .reader-title { font-size:1.7rem; }
+    .reader-topbar { padding:0 14px; }
+  }
+
+  /* ─── AI CHAT ─── */
+  .ai-panel {
+    background:#fff; border:1px solid rgba(92,61,30,.12); border-radius:4px;
+    padding:24px; box-shadow:0 2px 12px rgba(0,0,0,.06);
+  }
+  .chat-box {
+    height:240px; overflow-y:auto; background:var(--parchment);
+    border:1px solid rgba(92,61,30,.15); border-radius:3px;
+    padding:14px; margin-bottom:14px; font-size:.88rem; line-height:1.6;
+  }
+  .chat-msg { margin-bottom:12px; }
+  .chat-msg .who { font-weight:600; font-size:.76rem; text-transform:uppercase; letter-spacing:.07em; margin-bottom:3px; }
+  .chat-msg.user .who { color:var(--brown); }
+  .chat-msg.ai .who { color:var(--gold); }
+  .chat-msg .text { background:#fff; padding:8px 12px; border-radius:3px; display:inline-block; max-width:90%; }
+  .chat-msg.ai .text { background:rgba(201,146,42,.08); border:1px solid rgba(201,146,42,.15); }
+  .chat-input-row { display:flex; gap:10px; }
+  .chat-input {
+    flex:1; padding:10px 14px; border:1.5px solid rgba(92,61,30,.2); border-radius:3px;
+    font-family:'DM Sans',sans-serif; font-size:.9rem; outline:none;
+    transition:.2s;
+  }
+  .chat-input:focus { border-color:var(--gold); }
+  .chat-send {
+    padding:10px 20px; background:var(--gold); color:#fff; border:none; border-radius:3px;
+    cursor:pointer; font-family:'DM Sans',sans-serif; font-weight:500; transition:.2s;
+  }
+  .chat-send:hover { background:var(--gold-light); }
+  .chat-send:disabled { opacity:.5; cursor:not-allowed; }
+
+  /* ─── STATS ─── */
+  .stats-row { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:28px; }
+  .stat-card {
+    background:#fff; border:1px solid rgba(92,61,30,.1); border-radius:4px;
+    padding:20px; text-align:center; box-shadow:0 2px 8px rgba(0,0,0,.05);
+  }
+  .stat-num { font-family:'Playfair Display',serif; font-size:2rem; color:var(--gold); }
+  .stat-lbl { font-size:.78rem; color:var(--brown-light); text-transform:uppercase; letter-spacing:.08em; margin-top:4px; }
+
+  /* ─── SEARCH ─── */
+  .search-bar { display:flex; gap:10px; margin-bottom:22px; }
+  .search-input {
+    flex:1; padding:10px 14px; border:1.5px solid rgba(92,61,30,.2); border-radius:3px;
+    font-family:'DM Sans',sans-serif; font-size:.9rem; outline:none; transition:.2s;
+    background:#fff;
+  }
+  .search-input:focus { border-color:var(--gold); }
+
+  .empty-state { text-align:center; padding:60px 20px; color:var(--brown-light); }
+  .empty-state .icon { font-size:3rem; margin-bottom:12px; display:block; }
+
+  .hidden { display:none !important; }
+
+  /* ─── RESPONSIVE ─── */
+  @media(max-width:600px) {
+    .card { padding:32px 24px; }
+    .dash-content { padding:20px 16px; }
+    .form-row { grid-template-columns:1fr; }
+    .stats-row { grid-template-columns:1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- FONDO CON VELAS -->
+<div class="bg-scene" id="bgScene"></div>
+
+<!-- ════════════════ PANTALLA LOGIN/REGISTRO ════════════════ -->
+<div class="layer" id="authScreen">
+  <div class="card">
+    <div class="card-corner tl"></div>
+    <div class="card-corner tr"></div>
+    <div class="card-corner bl"></div>
+    <div class="card-corner br"></div>
+
+    <div class="logo-area">
+      <span class="logo-icon">📚</span>
+      <div class="logo-title">Lumina</div>
+      <div class="logo-sub">Biblioteca Virtual</div>
+      <div class="divider"></div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('login')">Ingresar</button>
+      <button class="tab-btn" onclick="switchTab('register')">Registrarse</button>
+    </div>
+
+    <!-- LOGIN -->
+    <div id="tabLogin">
+      <div class="form-group">
+        <label>Correo electrónico</label>
+        <input type="email" id="loginEmail" placeholder="tucorreo@ejemplo.com">
+      </div>
+      <div class="form-group">
+        <label>Contraseña</label>
+        <input type="password" id="loginPass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()">
+      </div>
+      <button class="btn btn-gold" onclick="doLogin()">✦ Entrar a la Biblioteca</button>
+      <div id="loginMsg"></div>
+      <p style="font-size:.78rem;color:var(--brown-light);text-align:center;margin-top:16px;">
+        <strong>Demo Admin:</strong> admin@lumina.com / admin123<br>
+        Regístrate para ser miembro
+      </p>
+    </div>
+
+    <!-- REGISTRO -->
+    <div id="tabRegister" class="hidden">
+      <div class="form-group">
+        <label>Nombre completo</label>
+        <input type="text" id="regName" placeholder="Tu nombre">
+      </div>
+      <div class="form-group">
+        <label>Correo electrónico</label>
+        <input type="email" id="regEmail" placeholder="tucorreo@ejemplo.com">
+      </div>
+      <div class="form-group">
+        <label>Contraseña</label>
+        <input type="password" id="regPass" placeholder="Mínimo 6 caracteres">
+      </div>
+      <div class="form-group">
+        <label>¿Quién eres?</label>
+        <select id="regRole">
+          <option value="member">Miembro (Lector)</option>
+          <option value="admin">Administrador (Agregar libros)</option>
+        </select>
+      </div>
+      <button class="btn btn-gold" onclick="doRegister()">✦ Crear Membresía</button>
+      <div id="registerMsg"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════ DASHBOARD ════════════════ -->
+<div class="dashboard" id="dashboard">
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="topbar-brand">📚 Lumina <span style="font-size:.7rem;opacity:.5;font-family:'DM Sans',sans-serif;">Biblioteca Virtual</span></div>
+    <div class="topbar-user">
+      <span id="topUserName"></span>
+      <span class="badge-role" id="topRoleBadge"></span>
+      <button class="logout-btn" onclick="doLogout()">Salir →</button>
+    </div>
+  </div>
+
+  <!-- CONTENIDO -->
+  <div class="dash-content">
+
+    <!-- ─── ADMIN PANEL ─── -->
+    <div id="adminPanel" class="hidden">
+      <div class="section-title">Panel de Administración</div>
+      <div class="section-sub">Gestiona el catálogo de la biblioteca</div>
+
+      <!-- Stats -->
+      <div class="stats-row">
+        <div class="stat-card"><div class="stat-num" id="statTotal">0</div><div class="stat-lbl">Libros totales</div></div>
+        <div class="stat-card"><div class="stat-num" id="statMembers">0</div><div class="stat-lbl">Miembros</div></div>
+        <div class="stat-card"><div class="stat-num" id="statCats">0</div><div class="stat-lbl">Categorías</div></div>
+      </div>
+
+      <div class="panel-tabs">
+        <button class="panel-tab active" onclick="switchPanel('addBook')">➕ Agregar Libro</button>
+        <button class="panel-tab" onclick="switchPanel('manageBooks')">📋 Administrar Libros</button>
+        <button class="panel-tab" onclick="switchPanel('aiAdmin')">🤖 Asistente IA</button>
+      </div>
+
+      <!-- AGREGAR LIBRO -->
+      <div id="addBook">
+        <div class="form-card">
+          <h3 style="font-family:'Playfair Display',serif;margin-bottom:20px;color:var(--ink);">Nuevo Libro al Catálogo</h3>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Título del libro *</label>
+              <input type="text" id="bookTitle" placeholder="Ej: Cien Años de Soledad">
+            </div>
+            <div class="form-group">
+              <label>Autor *</label>
+              <input type="text" id="bookAuthor" placeholder="Ej: Gabriel García Márquez">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Categoría</label>
+              <select id="bookCat">
+                <option value="Literatura">Literatura</option>
+                <option value="Ciencia">Ciencia</option>
+                <option value="Historia">Historia</option>
+                <option value="Filosofía">Filosofía</option>
+                <option value="Arte">Arte</option>
+                <option value="Tecnología">Tecnología</option>
+                <option value="Infantil">Infantil</option>
+                <option value="Otro">Otro</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Año de publicación</label>
+              <input type="number" id="bookYear" placeholder="Ej: 1967" min="1000" max="2100">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Descripción / Sinopsis *</label>
+            <textarea id="bookDesc" placeholder="Escribe una descripción del libro..."></textarea>
+          </div>
+          <div class="form-group">
+            <label>Contenido / Texto de muestra</label>
+            <textarea id="bookContent" placeholder="Capítulos, extractos, resumen detallado..." style="min-height:120px;"></textarea>
+          </div>
+          <button class="btn btn-gold" onclick="addBook()">✦ Agregar a la Biblioteca</button>
+          <div id="addBookMsg"></div>
+        </div>
+      </div>
+
+      <!-- ADMINISTRAR LIBROS -->
+      <div id="manageBooks" class="hidden">
+        <div class="search-bar">
+          <input class="search-input" id="adminSearch" placeholder="🔍 Buscar libros..." oninput="renderAdminBooks()">
+        </div>
+        <div id="adminBooksGrid" class="books-grid"></div>
+      </div>
+
+      <!-- IA ADMIN -->
+      <div id="aiAdmin" class="hidden">
+        <div class="ai-panel">
+          <h3 style="font-family:'Playfair Display',serif;margin-bottom:6px;">Asistente IA para Administradores</h3>
+          <p style="font-size:.83rem;color:var(--brown-light);margin-bottom:16px;">Pregunta sobre gestión de la biblioteca, recomendaciones de catálogo, estadísticas, etc.</p>
+          <div class="chat-box" id="chatAdminBox"></div>
+          <div class="chat-input-row">
+            <input class="chat-input" id="chatAdminInput" placeholder="¿Qué libros debo agregar? ¿Cómo organizar el catálogo?" onkeydown="if(event.key==='Enter')sendChat('admin')">
+            <button class="chat-send" id="chatAdminBtn" onclick="sendChat('admin')">Enviar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── MEMBER PANEL ─── -->
+    <div id="memberPanel" class="hidden">
+      <div class="section-title">Bienvenido a la Biblioteca</div>
+      <div class="section-sub">Explora nuestro catálogo y descubre tu próxima lectura</div>
+
+      <div class="panel-tabs">
+        <button class="panel-tab active" onclick="switchMemberPanel('catalog')">📚 Catálogo</button>
+        <button class="panel-tab" onclick="switchMemberPanel('aiMember')">🤖 Recomendaciones IA</button>
+      </div>
+
+      <!-- CATÁLOGO -->
+      <div id="catalog">
+        <div class="search-bar">
+          <input class="search-input" id="memberSearch" placeholder="🔍 Buscar por título, autor o categoría..." oninput="renderMemberBooks()">
+          <select id="catFilter" style="padding:10px 14px;border:1.5px solid rgba(92,61,30,.2);border-radius:3px;background:#fff;font-family:'DM Sans',sans-serif;font-size:.9rem;outline:none;" onchange="renderMemberBooks()">
+            <option value="">Todas las categorías</option>
+            <option>Literatura</option><option>Ciencia</option><option>Historia</option>
+            <option>Filosofía</option><option>Arte</option><option>Tecnología</option>
+            <option>Infantil</option><option>Otro</option>
+          </select>
+        </div>
+        <div id="memberBooksGrid" class="books-grid"></div>
+      </div>
+
+      <!-- IA MEMBER -->
+      <div id="aiMember" class="hidden">
+        <div class="ai-panel">
+          <h3 style="font-family:'Playfair Display',serif;margin-bottom:6px;">Recomendador de Libros IA</h3>
+          <p style="font-size:.83rem;color:var(--brown-light);margin-bottom:16px;">Dime qué tipo de libros te gustan y te recomendaré del catálogo o títulos nuevos.</p>
+          <div class="chat-box" id="chatMemberBox"></div>
+          <div class="chat-input-row">
+            <input class="chat-input" id="chatMemberInput" placeholder="Me gustan las novelas de aventuras, ¿qué me recomiendas?" onkeydown="if(event.key==='Enter')sendChat('member')">
+            <button class="chat-send" id="chatMemberBtn" onclick="sendChat('member')">Enviar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- LECTOR PANTALLA COMPLETA -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="reader-topbar">
+    <div class="reader-topbar-left">
+      <button class="reader-back" onclick="closeModal()">← Volver</button>
+      <div>
+        <div class="reader-book-title" id="modalTitleBar">—</div>
+        <div class="reader-book-author" id="modalAuthorBar">—</div>
+      </div>
+    </div>
+    <div class="reader-controls">
+      <span style="font-size:.75rem;color:rgba(245,237,214,.4);margin-right:4px;">Tamaño:</span>
+      <button class="font-btn" onclick="setFontSize('sm')" title="Texto pequeño">A</button>
+      <button class="font-btn" onclick="setFontSize('md')" title="Texto normal" style="font-size:1.1rem;">A</button>
+      <button class="font-btn" onclick="setFontSize('lg')" title="Texto grande" style="font-size:1.25rem;">A</button>
+      <button class="font-btn" onclick="setFontSize('xl')" title="Texto extra grande" style="font-size:1.4rem;">A</button>
+    </div>
+  </div>
+  <div class="reader-body" id="readerBody">
+    <div class="reader-page">
+      <div class="reader-header">
+        <div class="reader-title" id="modalTitle">—</div>
+        <div class="reader-author" id="modalMeta">—</div>
+        <div class="reader-meta-row" id="modalTags"></div>
+      </div>
+      <div class="reader-content" id="modalContent"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════
+//  ESTADO GLOBAL
+// ═══════════════════════════════════════════════
+let users = JSON.parse(localStorage.getItem('lb_users') || '[]');
+let books = JSON.parse(localStorage.getItem('lb_books') || '[]');
+let currentUser = JSON.parse(localStorage.getItem('lb_session') || 'null');
+
+// Usuario admin por defecto
+if (!users.find(u => u.email === 'admin@lumina.com')) {
+  users.push({ id: 'admin', name: 'Administrador', email: 'admin@lumina.com', pass: 'admin123', role: 'admin' });
+  saveUsers();
+}
+
+// Libros precargados con contenido completo
+const DEFAULT_BOOKS = [
+  {
+    id: 'b1',
+    title: 'Cien Años de Soledad',
+    author: 'Gabriel García Márquez',
+    cat: 'Literatura',
+    year: 1967,
+    desc: 'La monumental saga de la familia Buendía a lo largo de siete generaciones en el mítico pueblo de Macondo. Una obra cumbre del realismo mágico latinoamericano, Premio Nobel de Literatura 1982.',
+    content: `CIEN AÑOS DE SOLEDAD
+Gabriel García Márquez — 1967
+
+━━━━━━━━━━━━━━━━━━━━━━━━━
+
+SOBRE EL LIBRO
+Publicada en 1967 por la editorial Sudamericana, esta novela es considerada una de las obras más importantes de la literatura hispanoamericana y universal. García Márquez tardó 18 meses en escribirla, durante los cuales su familia vivió endeudada. Cuando terminó el manuscrito, solo tenía dinero para enviar la mitad a la editorial; su esposa Mercedes empeñó la lavadora y el secador para pagar el resto del envío postal.
+
+ARGUMENTO
+La historia sigue a la familia Buendía desde la fundación de Macondo por José Arcadio Buendía hasta su destrucción final. A lo largo de seis o siete generaciones, los Buendía repiten nombres, vicios y virtudes de manera cíclica, atrapados en una maldición que José Arcadio Buendía descifró en los pergaminos del gitano Melquíades.
+
+PERSONAJES PRINCIPALES
+• José Arcadio Buendía — Fundador de Macondo, genio soñador que enloquece buscando el conocimiento.
+• Úrsula Iguarán — Matriarca de la familia, símbolo de fortaleza y continuidad, vive más de 100 años.
+• Coronel Aureliano Buendía — Inicia 32 guerras civiles, todas perdidas. Fabrica pescaditos de oro.
+• Amaranta Buendía — Mujer que rechaza el amor y teje su propio sudario.
+• Rebeca — Mujer misteriosa que llegó con una bolsa de huesos de sus padres.
+• Remedios la Bella — Considerada la mujer más bella del mundo, asciende al cielo en vida.
+• Mauricio Babilonia — Rodeado siempre de mariposas amarillas.
+
+CAPÍTULO I — INICIO DE LA HISTORIA
+"Muchos años después, frente al pelotón de fusilamiento, el coronel Aureliano Buendía había de recordar aquella tarde remota en que su padre lo llevó a conocer el hielo."
+
+Con esta frase arranca la historia. José Arcadio Buendía funda Macondo en un lugar paradisíaco junto a un río de aguas diáfanas. El pueblo es tan nuevo que muchas cosas carecían de nombre, y para mencionarlas había que señalarlas con el dedo.
+
+El gitano Melquíades visita el pueblo cada año llevando inventos maravillosos: el imán, el catalejo, los mapas, el astrolabio. José Arcadio Buendía, fascinado, lo entrega todo a cambio de conocimiento.
+
+LA MALDICIÓN DE LOS BUENDÍA
+El origen de la familia está marcado por el miedo: José Arcadio Buendía mató a Prudencio Aguilar en un duelo de honor. El fantasma de Prudencio los persiguió hasta que José Arcadio y Úrsula huyeron fundando Macondo. El miedo original era que un hijo suyo naciera con cola de cerdo —fruto del incesto entre primos— lo que finalmente ocurre al final de la novela.
+
+LOS PERGAMINOS DE MELQUÍADES
+Todo lo que ocurre en la novela estaba escrito de antemano en los pergaminos del gitano Melquíades, escritos en sánscrito. Al final, el último Aureliano los descifra y lee en ellos la historia completa de su familia, incluyendo el instante en que los está leyendo. La novela termina en el momento en que Macondo es barrido por un viento bíblico.
+
+TEMAS PRINCIPALES
+• La soledad como condena hereditaria de los Buendía
+• La repetición cíclica de la historia y los nombres
+• El tiempo circular versus el tiempo lineal
+• La memoria y el olvido colectivo
+• La guerra civil colombiana y la violencia política
+• La llegada del progreso y la United Fruit Company
+• La magia como parte de la realidad cotidiana
+
+FRASES CÉLEBRES
+"Era como si Dios hubiera resuelto poner a prueba toda capacidad de asombro, y mantuviera a los habitantes de Macondo en un permanente vaivén entre el alborozo y el desencanto, la duda y la revelación, hasta el límite extremo de sus fuerzas."
+
+"El secreto de una buena vejez no es otra cosa que un pacto honrado con la soledad."
+
+"No llores por lo que no pudo ser, vive lo que es."
+
+LEGADO
+La novela vendió más de 50 millones de ejemplares y fue traducida a 46 idiomas. Influyó en escritores como Isabel Allende, Laura Esquivel, Salman Rushdie y Toni Morrison. En 2019, Netflix anunció una adaptación para serie, finalmente estrenada en 2024.`
+  },
+  {
+    id: 'b2',
+    title: 'El Principito',
+    author: 'Antoine de Saint-Exupéry',
+    cat: 'Literatura',
+    year: 1943,
+    desc: 'Un aviador que cae en el desierto del Sahara conoce a un pequeño príncipe venido de un asteroide lejano. Una fábula filosófica sobre la amistad, el amor, la pérdida de la inocencia y lo que realmente importa en la vida.',
+    content: `EL PRINCIPITO
+Antoine de Saint-Exupéry — 1943
+
+━━━━━━━━━━━━━━━━━━━━━━━━━
+
+SOBRE EL LIBRO
+Publicado en abril de 1943 en Nueva York, El Principito es el libro más leído y más traducido en lengua francesa. Ha sido traducido a más de 300 idiomas y dialectos, incluyendo el latín. Saint-Exupéry lo escribió mientras vivía exiliado en Nueva York durante la Segunda Guerra Mundial, con nostalgia de su tierra natal y plena conciencia de su posible muerte —en efecto, desapareció en misión de reconocimiento en 1944, sin que su avión fuera jamás encontrado.
+
+ARGUMENTO
+El narrador, un aviador, aterriza de emergencia en el desierto del Sahara. Ahí aparece un niño —el principito— que le pide que le dibuje un cordero. El niño viene del asteroide B-612 y relata su viaje por varios planetas antes de llegar a la Tierra.
+
+LOS PLANETAS QUE VISITA
+• Asteroide B-612 (su hogar) — Tiene tres volcanes, baobabs que debe arrancar para que no destruyan el planeta, y una rosa única y orgullosa que ama profundamente.
+• Planeta del Rey — Un rey que quiere gobernar a todos pero solo tiene un súbdito: él mismo.
+• Planeta del Vanidoso — Un hombre que quiere ser admirado por todos, pero está completamente solo.
+• Planeta del Bebedor — Un hombre que bebe para olvidar la vergüenza de beber.
+• Planeta del Hombre de Negocios — Cuenta estrellas para poseerlas, pero no sabe qué hacer con ellas.
+• Planeta del Farolero — El único sensato: cumple su deber aunque no tenga sentido.
+• Planeta del Geógrafo — Estudia los ríos y montañas pero nunca los ha visto.
+• La Tierra — Donde encuentra a la serpiente, al zorro y al aviador.
+
+EL ZORRO Y EL SECRETO
+La parte más famosa del libro. El principito encuentra a un zorro que le pide ser domesticado. El zorro explica que "domesticar" significa crear lazos, hacer que alguien sea único para ti y tú para él.
+
+"No se ve bien sino con el corazón. Lo esencial es invisible a los ojos."
+
+El zorro le revela también que su rosa —aunque igual a otras miles— es única porque es a ella a quien el principito ha regado, abrigado y escuchado quejarse.
+
+LA ROSA
+La rosa representa el amor difícil: orgullosa, exigente, a veces mentirosa, pero amada profundamente. El principito la dejó porque no supo entenderla; la Tierra le enseña que debería haberla juzgado por sus actos, no por sus palabras.
+
+"Es el tiempo que has perdido en tu rosa lo que hace que tu rosa sea tan importante."
+
+LA SERPIENTE
+Al llegar a la Tierra, el principito encuentra una serpiente que le dice que puede devolverlo a su planeta —con una mordida. Al final de la historia, el principito acepta la mordida para regresar a cuidar su rosa. El narrador interpreta su caída como una muerte suave.
+
+FRASES INMORTALES
+"Los mayores nunca comprenden nada por sí solos, y es agotador para los niños tener que darles siempre explicaciones."
+
+"Todas las personas mayores fueron primero niños, aunque pocas lo recuerdan."
+
+"Eres responsable para siempre de lo que has domesticado."
+
+"Mi rosa es más importante que todas las demás porque es a ella a quien yo he regado."
+
+SIMBOLISMO
+• El cordero: la amenaza al amor (puede comerse la rosa)
+• El baobab: los problemas pequeños que si no se atienden destruyen todo
+• El sombrero-boa: la diferencia entre ver con los ojos y ver con el corazón
+• Las estrellas: la presencia de los seres queridos aunque no estén
+
+LEGADO
+El Principito es el libro más vendido de la historia de la literatura francesa y uno de los más vendidos en el mundo. Su frase "Lo esencial es invisible a los ojos" es una de las más citadas de la literatura universal.`
+  },
+  {
+    id: 'b3',
+    title: 'Don Quijote de la Mancha',
+    author: 'Miguel de Cervantes',
+    cat: 'Literatura',
+    year: 1605,
+    desc: 'Considerada la primera novela moderna de la literatura occidental y la obra más importante de la lengua española. La historia de un hidalgo que enloquece leyendo novelas de caballería y decide convertirse en caballero andante.',
+    content: `DON QUIJOTE DE LA MANCHA
+Miguel de Cervantes Saavedra — 1605 (Parte I) / 1615 (Parte II)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━
+
+SOBRE EL LIBRO
+Publicada en dos partes, es considerada la primera novela moderna del mundo y la obra más importante en lengua española. Ha sido traducida a más de 140 idiomas. Cervantes la escribió originalmente como parodia de los libros de caballería que estaban de moda, pero resultó ser mucho más: una reflexión profunda sobre la realidad, la ilusión, la locura y el idealismo.
+
+ARGUMENTO
+Alonso Quijano, un hidalgo manchego de unos cincuenta años, lee tantos libros de caballería que pierde el juicio. Decide convertirse en caballero andante bajo el nombre de Don Quijote de la Mancha, armado con una vieja armadura y montado en su caballo Rocinante. Convence a su vecino Sancho Panza para que sea su escudero, prometiéndole gobernar una ínsula.
+
+LOS PERSONAJES
+• Don Quijote (Alonso Quijano) — El caballero andante. Ve gigantes donde hay molinos, castillos donde hay ventas, y princesas donde hay aldeanas.
+• Sancho Panza — El escudero fiel, hombre simple y práctico, lleno de refranes. Contrasta con el idealismo de su amo.
+• Dulcinea del Toboso — El amor platónico de Don Quijote. En realidad es Aldonza Lorenzo, una aldeana que él nunca ha hablado.
+• Rocinante — El caballo flaco y débil de Don Quijote.
+• El Rucio — El burro de Sancho.
+
+LAS AVENTURAS MÁS FAMOSAS
+
+LOS MOLINOS DE VIENTO (Capítulo VIII, Parte I)
+Don Quijote ve en el campo unos treinta o cuarenta molinos de viento y los confunde con gigantes de enormes brazos. A pesar de que Sancho le dice que son molinos, Don Quijote los acomete con su lanza. El viento mueve las aspas y lo lanzan por los aires con su caballo. Don Quijote culpa al mago Frestón de haber convertido a los gigantes en molinos.
+
+"La aventura de los molinos se ha convertido en el símbolo eterno del idealismo chocando con la realidad."
+
+EL YELMO DE MAMBRINO
+Don Quijote confunde a un barbero que lleva una bacía de peltre en la cabeza para protegerse de la lluvia con un caballero que porta el mítico yelmo de Mambrino. Se lo arrebata y lo luce orgulloso durante toda la novela.
+
+LAS BODAS DE CAMACHO
+Una de las historias intercaladas más celebradas: el rico Camacho prepara una boda fastuosa, pero Basilio, el pobre que ama a la novia, finge suicidarse para que ella le dé el "sí" en su lecho de muerte.
+
+EL GOBIERNO DE SANCHO
+En la Parte II, el duque y la duquesa gastan bromas a los protagonistas. Le dan a Sancho el gobierno de la "ínsula Barataria" (en realidad un pueblo). Sancho resulta ser un gobernador sorprendentemente sabio y justo, demostrando que bajo su rusticidad hay un gran sentido común.
+
+LOS DOS NIVELES DE LA OBRA
+La novela funciona en dos niveles simultáneos:
+1. Parodia: burla de los ridículos excesos de las novelas de caballería.
+2. Tragedia: el drama de un hombre que prefiere vivir en un mundo mejor aunque sea irreal, y que muere lúcido —es decir, habiendo perdido sus ilusiones.
+
+FRASES CÉLEBRES
+"Ladran, luego cabalgamos." (atribuida a la obra)
+
+"Con la Iglesia hemos dado, Sancho."
+
+"Yo sé quién soy y sé que puedo ser no solo los que he dicho, sino todos los Doce Pares de Francia."
+
+"La libertad, Sancho, es uno de los más preciosos dones que a los hombres dieron los cielos."
+
+EL FINAL
+En la Parte II, Don Quijote es vencido por el Caballero de la Blanca Luna (en realidad su amigo el bachiller Sansón Carrasco disfrazado). Derrotado, regresa a su aldea. Ahí recupera la razón, reniega de los libros de caballería y muere en paz como Alonso Quijano el Bueno. Sancho, que ya había abrazado su mundo, llora su muerte.
+
+LEGADO
+El Quijote es el libro más editado de la historia después de la Biblia. Inventó recursos narrativos modernos: el narrador poco fiable, la metaficción, los personajes que leen sobre sí mismos. Influenció a Flaubert, Dostoyevski, Kafka, Borges y prácticamente toda la literatura posterior.`
+  },
+  {
+    id: 'b4',
+    title: 'Sapiens: De animales a dioses',
+    author: 'Yuval Noah Harari',
+    cat: 'Historia',
+    year: 2011,
+    desc: 'Una revolucionaria historia de la humanidad que examina cómo el Homo sapiens llegó a dominar la Tierra. Desde la Revolución Cognitiva hasta la era tecnológica, Harari explora qué nos hizo humanos y hacia dónde vamos.',
+    content: `SAPIENS: DE ANIMALES A DIOSES
+Yuval Noah Harari — 2011
+
+━━━━━━━━━━━━━━━━━━━━━━━━━
+
+SOBRE EL LIBRO
+Publicado originalmente en hebreo en 2011, traducido al inglés en 2014 y convertido en fenómeno mundial. Ha vendido más de 25 millones de ejemplares en 65 idiomas. Harari es profesor de Historia en la Universidad Hebrea de Jerusalén. El libro propone una visión panorámica y a veces provocadora de la historia humana.
+
+TESIS CENTRAL
+Los humanos dominamos la Tierra no porque seamos los más fuertes, rápidos o inteligentes, sino porque somos la única especie capaz de cooperar en grandes números gracias a ficciones compartidas: los mitos, las religiones, las naciones, el dinero y las leyes.
+
+LAS CUATRO GRANDES REVOLUCIONES
+
+1. LA REVOLUCIÓN COGNITIVA (hace 70.000 años)
+Algo cambió en la mente del Homo sapiens: desarrollamos la capacidad de hablar sobre cosas que no existen. Podemos creer en dioses, naciones, derechos humanos y empresas. Esta capacidad de crear y creer en "realidades intersubjetivas" nos permitió cooperar con extraños en grupos enormes.
+
+Los neandertales eran más fuertes y tenían cerebros similares. Los sapiens los exterminamos —o absorbimos— probablemente porque podíamos coordinar grupos de cientos de personas, mientras los neandertales no superaban los 50.
+
+2. LA REVOLUCIÓN AGRÍCOLA (hace 10.000 años)
+Harari la llama "el mayor fraude de la historia": los humanos no domesticaron el trigo, el trigo domesticó a los humanos. Los cazadores-recolectores trabajaban 3-4 horas diarias y tenían dietas variadas y vida saludable. Los agricultores trabajaban 12 horas, comían principalmente un cereal, sufrían más enfermedades y vivían en jerarquías rígidas.
+
+Sin embargo, la agricultura permitió poblaciones más numerosas. No fue mejor para los individuos, pero sí para la especie como conjunto.
+
+3. LA UNIFICACIÓN DE LA HUMANIDAD (hace 5.000 años)
+Tres grandes fuerzas unificaron progresivamente a la humanidad:
+• El dinero: el sistema de confianza más exitoso de la historia. Un billete no tiene valor intrínseco; vale porque todos creemos que vale.
+• Los imperios: aunque violentos y opresores, extendieron culturas, leyes y lenguas.
+• Las religiones universales: el budismo, el islam y el cristianismo crearon comunidades que trascendían fronteras étnicas.
+
+4. LA REVOLUCIÓN CIENTÍFICA (hace 500 años)
+Europa conquistó el mundo porque fue la primera civilización en admitir su propia ignorancia y desarrollar el método científico. La combinación de ciencia, capitalismo e imperialismo creó un bucle de retroalimentación que catapultó a Occidente al dominio global.
+
+EL CAPITALISMO Y LA FELICIDAD
+Harari plantea una pregunta incómoda: ¿somos más felices hoy que en la Edad de Piedra? La respuesta no es clara. Tenemos más bienes materiales, pero también más ansiedad, soledad y enfermedades mentales. Los campesinos medievales no sufrían de estrés laboral ni crisis de identidad.
+
+La felicidad, argumenta, puede depender más de las expectativas que de las condiciones objetivas. Una sociedad que promete felicidad ilimitada puede crear más infelices que una que no promete nada.
+
+EL FUTURO: HOMO DEUS
+El libro anticipa lo que desarrollaría en su siguiente obra: la humanidad está a punto de trascender sus límites biológicos mediante la biotecnología, la inteligencia artificial y la ingeniería cerebral. La pregunta no es si lo haremos, sino qué seremos cuando lo hagamos.
+
+CRÍTICAS AL LIBRO
+• Algunos historiadores critican que Harari simplifica demasiado.
+• La tesis del "fraude agrícola" es debatida: muchas civilizaciones agrícolas florecieron brillantemente.
+• Su visión del futuro es más especulativa que histórica.
+
+FRASES MEMORABLES
+"Los sapiens gobiernan el mundo porque somos la única especie capaz de cooperar de manera flexible en grandes números."
+
+"El dinero es la cosa más universal y más eficiente de la confianza que jamás se ha inventado."
+
+"La historia es algo que muy poca gente ha estado haciendo mientras todos los demás araban los campos y cargaban cubos de agua."`
+  },
+  {
+    id: 'b5',
+    title: 'El Arte de la Guerra',
+    author: 'Sun Tzu',
+    cat: 'Filosofía',
+    year: -500,
+    desc: 'El tratado militar más antiguo del mundo, escrito por el general chino Sun Tzu hace 2.500 años. Sus 13 capítulos sobre estrategia, táctica y liderazgo siguen siendo estudiados en academias militares, escuelas de negocios y deportes de alto rendimiento.',
+    content: `EL ARTE DE LA GUERRA
+Sun Tzu — Siglo V a.C.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━
+
+SOBRE EL LIBRO
+Escrito aproximadamente en el siglo V a.C. durante el período de los Estados Combatientes de China, El Arte de la Guerra es el tratado militar más antiguo del mundo. Atribuido al general Sun Tzu (también escrito Sun Zi), constaba originalmente de tiras de bambú. Ha sido traducido al inglés, francés, español y decenas de idiomas más. Napoleón, Mao Zedong y el ejército de los EE.UU. lo han estudiado. Hoy es lectura obligatoria en escuelas de negocios de Harvard y Wharton.
+
+ESTRUCTURA: LOS 13 CAPÍTULOS
+
+CAPÍTULO I — ESTIMACIONES ESTRATÉGICAS
+"El arte de la guerra es de vital importancia para el Estado. Es una cuestión de vida o muerte, un camino hacia la seguridad o hacia la ruina."
+
+Sun Tzu establece cinco factores que determinan el resultado de cualquier conflicto:
+1. El Dao (la causa moral) — El pueblo debe estar en acuerdo con su gobernante.
+2. El Cielo — Las condiciones naturales: frío, calor, día, noche.
+3. La Tierra — El terreno: distancias, peligros, espacios abiertos o cerrados.
+4. El General — Las virtudes del líder: sabiduría, confianza, benevolencia, valentía, rigor.
+5. La Disciplina — La organización del ejército, la logística y el sistema de mando.
+
+CAPÍTULO II — HACER LA GUERRA
+"No hay ejemplo de ningún país que se haya beneficiado de una guerra prolongada."
+
+La velocidad es esencial. Las guerras largas agotan los recursos, desmoralizan al ejército y empobrecen al Estado. El objetivo es la victoria rápida y decisiva.
+
+CAPÍTULO III — LA ESTRATEGIA OFENSIVA
+El capítulo más famoso y citado del libro:
+"La excelencia suprema consiste en someter al ejército enemigo sin luchar."
+
+El mejor general es el que gana sin combate: mediante diplomacia, espionaje, maniobras que desmoralizan al enemigo antes del primer golpe. Destruir el plan del enemigo es mejor que destruir su ejército.
+
+"Conócete a ti mismo y conoce a tu enemigo: en cien batallas, no estarás en peligro. Si te conoces a ti mismo pero no al enemigo, para cada victoria sufrirás una derrota. Si no te conoces a ti mismo ni al enemigo, sucumbirás en cada batalla."
+
+CAPÍTULO IV — DISPOSICIÓN TÁCTICA
+"Primero hazte invencible; luego espera la oportunidad de vencer al enemigo."
+
+Un buen general asegura primero que no puede ser derrotado, y luego busca la vulnerabilidad del enemigo. La defensa requiere secreto; el ataque requiere relámpago.
+
+CAPÍTULO V — ENERGÍA
+Sun Tzu distingue entre la fuerza directa (zheng) y la fuerza indirecta (qi). La fuerza directa fija al enemigo; la fuerza indirecta lo derrota. Los grandes generales usan la fuerza directa predeciblemente y la fuerza indirecta sorpresivamente.
+
+CAPÍTULO VI — PUNTOS DÉBILES Y FUERTES
+"El que primero llega al campo de batalla y espera al enemigo estará descansado para la batalla. El que llega tarde al campo de batalla y tiene que combatir estará agotado."
+
+Controla la iniciativa. Obliga al enemigo a ir donde tú quieres, no donde él quiere.
+
+CAPÍTULO VII — MANIOBRAS
+"En campaña, el mando táctico es gobernado por la circunstancia."
+
+El movimiento del ejército debe ser coordinado como el movimiento del agua: fluye hacia donde hay espacio, evita donde hay resistencia.
+
+CAPÍTULO XIII — EL USO DE LOS ESPÍAS
+El capítulo final y uno de los más sofisticados: Sun Tzu clasifica cinco tipos de agentes de inteligencia y describe cómo usarlos. "Conoce al enemigo" solo es posible mediante información; la información solo se obtiene mediante personas, no mediante los cielos ni los espíritus.
+
+APLICACIONES MODERNAS
+
+EN LOS NEGOCIOS:
+• "El mercado es un campo de batalla, los competidores son el enemigo."
+• La estrategia corporativa, el análisis FODA, el posicionamiento competitivo.
+• Jeff Bezos y Jack Ma citan El Arte de la Guerra.
+
+EN EL DEPORTE:
+• Los All Blacks de Nueva Zelanda, los Chicago Bulls de Phil Jackson.
+• Conocer las debilidades del rival antes del partido.
+
+EN LA VIDA PERSONAL:
+• Gestión del tiempo y la energía.
+• Negociación y resolución de conflictos.
+• Cómo elegir las batallas que vale la pena pelear.
+
+FRASES ETERNAS
+"Aparenta ser débil cuando eres fuerte, y fuerte cuando eres débil."
+
+"La velocidad es la esencia de la guerra."
+
+"Las oportunidades se multiplican cuando se aprovechan."
+
+"Todo el arte de la guerra se basa en el engaño."`
+  },
+  {
+    id: 'b6',
+    title: 'Breve Historia del Tiempo',
+    author: 'Stephen Hawking',
+    cat: 'Ciencia',
+    year: 1988,
+    desc: 'El libro de divulgación científica más vendido de la historia. Hawking explica el origen del universo, los agujeros negros, la naturaleza del tiempo y la búsqueda de una teoría unificada de todo, sin ecuaciones y para el público general.',
+    content: `BREVE HISTORIA DEL TIEMPO
+Stephen Hawking — 1988
+
+━━━━━━━━━━━━━━━━━━━━━━━━━
+
+SOBRE EL LIBRO
+Publicado en 1988, permaneció en la lista de bestsellers del Sunday Times durante 237 semanas consecutivas. Ha vendido más de 25 millones de copias y fue traducido a 40 idiomas. Hawking lo escribió con la intención de que cualquier persona sin conocimientos científicos pudiera entender las grandes preguntas del cosmos. Su editor le advirtió que cada ecuación reduciría las ventas a la mitad; Hawking incluyó solo una: E=mc².
+
+CAPÍTULO 1 — NUESTRA IMAGEN DEL UNIVERSO
+La historia de la cosmología desde Aristóteles hasta Einstein. Por siglos se creyó que la Tierra era el centro del universo. Copérnico la movió al margen del sistema solar; Hubble la movió al margen de la galaxia; la cosmología moderna la movió a un punto cualquiera de un universo sin centro.
+
+Una famosa anécdota abre el libro: después de una conferencia sobre astronomía, una señora anciana dijo que el conferenciante estaba equivocado —el mundo descansaba sobre el lomo de una tortuga gigante. El científico preguntó: "¿Y sobre qué descansa la tortuga?" Ella respondió: "Es tortugas hasta abajo." Hawking usa esto para ilustrar la dificultad de preguntar qué había antes del Big Bang.
+
+CAPÍTULO 2 — EL ESPACIO Y EL TIEMPO
+Einstein revolucionó nuestra idea del tiempo con la Relatividad Especial (1905) y la Relatividad General (1915).
+
+Relatividad Especial: el tiempo no es absoluto. Un reloj en movimiento corre más despacio que uno en reposo (dilatación temporal). A velocidades cercanas a la luz, el tiempo casi se detiene. Esto no es una ilusión —es físicamente real.
+
+Relatividad General: la gravedad no es una fuerza (como Newton pensaba) sino una curvatura del espacio-tiempo. La masa curva el espacio-tiempo a su alrededor, como una bola de bolos sobre una sábana elástica.
+
+CAPÍTULO 3 — EL UNIVERSO EN EXPANSIÓN
+En 1929, Edwin Hubble descubrió que las galaxias se alejaban de nosotros y entre sí. El universo se está expandiendo. Rebobinando el tiempo, toda la materia y energía del universo estuvieron alguna vez concentradas en un punto de densidad infinita: la singularidad del Big Bang, hace unos 13.800 millones de años.
+
+CAPÍTULO 4 — EL PRINCIPIO DE INCERTIDUMBRE
+Heisenberg demostró que es físicamente imposible conocer simultáneamente la posición y la velocidad exactas de una partícula. Cuanto más precisamente mides una, menos puedes saber de la otra. Esto no se debe a limitaciones de los instrumentos, sino a la naturaleza fundamental de la realidad.
+
+CAPÍTULO 5 — LAS PARTÍCULAS ELEMENTALES Y LAS FUERZAS DE LA NATURALEZA
+Las cuatro fuerzas fundamentales:
+1. Gravedad — Atrae toda materia. Rige las escalas astronómicas.
+2. Electromagnetismo — Luz, electricidad, magnetismo.
+3. Fuerza nuclear fuerte — Une los quarks en protones y neutrones.
+4. Fuerza nuclear débil — Responsable de la radiactividad beta.
+
+El sueño de la física es una "Teoría del Todo" que unifique las cuatro fuerzas. Einstein pasó los últimos 30 años de su vida buscándola. Hawking esperaba encontrarla antes del año 2000.
+
+CAPÍTULO 6 — LOS AGUJEROS NEGROS
+Un agujero negro se forma cuando una estrella masiva colapsa bajo su propia gravedad hasta que la densidad es tal que ni la luz puede escapar. El límite del agujero negro se llama horizonte de sucesos.
+
+Durante siglos se creyó que nada podía salir de un agujero negro. Hawking demostró en 1974 que sí: los agujeros negros emiten radiación cuántica (hoy llamada Radiación de Hawking) y eventualmente se evaporan. Este fue su mayor descubrimiento.
+
+CAPÍTULO 8 — EL ORIGEN Y DESTINO DEL UNIVERSO
+¿Qué había antes del Big Bang? Hawking propone que la pregunta no tiene sentido: el tiempo comenzó con el Big Bang. Preguntar qué había antes es como preguntar qué hay al sur del Polo Sur.
+
+Con James Hartle, Hawking propuso el modelo de "universo sin fronteras": el universo no tiene principio ni fin en el tiempo, sino que se curva sobre sí mismo como la superficie de una esfera.
+
+EL DESTINO DEL UNIVERSO: tres posibilidades según la densidad de materia:
+1. Expansión eterna — si la densidad es baja.
+2. Gran Colapso (Big Crunch) — si la densidad es alta.
+3. Expansión acelerada (lo que observamos hoy, por la energía oscura).
+
+LA GRAN PREGUNTA FINAL
+"Si descubrimos una teoría completa, debería ser comprensible en líneas generales para todos, no solo para unos pocos científicos. Entonces todos —filósofos, científicos y gente común— podremos participar en la discusión de por qué existimos nosotros y el universo. Si encontramos la respuesta a eso, sería el triunfo definitivo de la razón humana, porque entonces conoceríamos la mente de Dios."`
+  },
+  {
+    id: 'b7',
+    title: 'Harry Potter y la Piedra Filosofal',
+    author: 'J.K. Rowling',
+    cat: 'Literatura',
+    year: 1997,
+    desc: 'El inicio de la saga más vendida de la historia. Un niño huérfano que vive bajo las escaleras descubre que es mago y es admitido en Hogwarts, la escuela de magia y hechicería, donde comienza una aventura que cambiará el mundo de la magia para siempre.',
+    content: `HARRY POTTER Y LA PIEDRA FILOSOFAL
+J.K. Rowling — 1997
+
+━━━━━━━━━━━━━━━━━━━━━━━━━
+
+SOBRE EL LIBRO
+El primer libro de la saga Harry Potter fue rechazado por 12 editoriales antes de ser aceptado por Bloomsbury en 1997. J.K. Rowling era una madre soltera desempleada que escribía en cafeterías de Edimburgo mientras su hija dormía. La saga completa (7 libros) ha vendido más de 600 millones de copias, convirtiéndose en la más vendida de la historia.
+
+ARGUMENTO
+Harry Potter tiene 11 años y vive miserablemente con sus tíos Vernon y Petunia Dursley y su primo Dudley en el número 4 de Privet Drive. Harry duerme en un armario bajo las escaleras, lo tratan como a un sirviente y le ocultan un secreto fundamental: es mago.
+
+Un día, cientos de cartas comienzan a llegar a la casa. El tío Vernon las destruye todas. Entonces aparece Hagrid, el guardabosques de Hogwarts, y le revela la verdad: Harry Potter es famoso en el mundo mágico porque de bebé sobrevivió al hechizo Avada Kedavra del mago oscuro Voldemort, quien mató a sus padres. Nadie sabe cómo lo sobrevivió.
+
+HOGWARTS: LA ESCUELA DE MAGIA
+Harry ingresa a Hogwarts y descubre un mundo completamente nuevo:
+
+Las Cuatro Casas:
+• Gryffindor (valentía) — Donde va Harry, junto a Ron Weasley y Hermione Granger.
+• Slytherin (ambición) — La casa de Draco Malfoy y, en el pasado, de Voldemort.
+• Hufflepuff (lealtad) — Considerada la menos glamurosa, pero la más justa.
+• Ravenclaw (inteligencia) — La casa de los eruditos.
+
+El Sombrero Seleccionador decide la casa de cada alumno al leer su mente.
+
+LOS AMIGOS
+Ron Weasley: el mejor amigo de Harry, de una familia de magos pobre pero amorosa. Sus hermanos mayores —los gemelos Fred y George— son los bromistas del colegio.
+
+Hermione Granger: de familia muggle (sin magia), pero la alumna más brillante de su año. Inicialmente arrogante; se convierte en la amiga más leal y capaz de Harry.
+
+EL QUIDDITCH
+Deporte mágico jugado en escobas. Cada equipo tiene 7 jugadores:
+• 3 Cazadores: marcan goles con la Quaffle (pelota grande).
+• 2 Golpeadores: defienden al equipo de las Bludgers (pelotas que atacan jugadores).
+• 1 Guardián: protege los aros.
+• 1 Buscador: atrapa la Snitch Dorada (pelota alada diminuta) para ganar 150 puntos y terminar el partido.
+
+Harry, sin ningún entrenamiento, se convierte en el Buscador más joven de Hogwarts en un siglo.
+
+LA PIEDRA FILOSOFAL
+Creada por el alquimista Nicolás Flamel, la Piedra Filosofal tiene dos poderes: convertir cualquier metal en oro y producir el Elixir de la Vida, que otorga la inmortalidad. Está escondida en Hogwarts. Harry descubre que Voldemort, débil y sin cuerpo, está intentando robarla para recuperar su poder.
+
+El obstáculo final es un espejo: el Espejo de Oesed ("deseo" al revés). Solo quien quiera encontrar la piedra pero no usarla para sí mismo puede obtenerla. Harry la obtiene porque quiere protegerla, no usarla.
+
+LA BATALLA FINAL
+Detrás del robo no está el profesor Quirrell, como parecía, sino el mismo Voldemort, que vive como parásito en la nuca de Quirrell. Harry lo enfrenta solo y descubre que su toque quema a Voldemort —el amor de su madre, que murió para protegerlo, dejó en él una marca protectora.
+
+TEMAS DE LA SAGA
+• La muerte y cómo enfrentarla (Voldemort la teme; Harry la acepta).
+• El poder del amor como fuerza mágica real.
+• El prejuicio: los "sangres sucias" (magos de familia muggle) versus los "sangres puras".
+• La elección versus el destino: ¿Somos lo que somos por naturaleza o por decisión?
+
+FRASES MEMORABLES
+"No importa que hagas magia accidentalmente. Lo que importa es lo que haces con ella cuando la controlas."
+
+"La verdad es una cosa hermosa y terrible, y debe ser tratada con gran cuidado."
+
+"No hay bien y mal. Solo hay poder, y quienes son demasiado débiles para buscarlo." (Quirrell/Voldemort)`
+  },
+  {
+    id: 'b8',
+    title: 'El Alquimista',
+    author: 'Paulo Coelho',
+    cat: 'Literatura',
+    year: 1988,
+    desc: 'La novela de un pastor español llamado Santiago que viaja desde Andalucía hasta las pirámides de Egipto en busca de un tesoro, aprendiendo en el camino los secretos del universo y el lenguaje del mundo.',
+    content: `EL ALQUIMISTA
+Paulo Coelho — 1988
+
+━━━━━━━━━━━━━━━━━━━━━━━━━
+
+SOBRE EL LIBRO
+Publicada en Brasil en 1988, fue inicialmente rechazada por la primera editorial y vendió solo 900 copias en su primer año. Coelho la recuperó, consiguió otra editorial, y se convirtió en el libro más vendido en lengua portuguesa de todos los tiempos. Ha vendido más de 65 millones de copias en todo el mundo y fue traducida a 80 idiomas. Sigue siendo uno de los libros más leídos del siglo XX y XXI.
+
+ARGUMENTO
+Santiago es un joven pastor andaluz que vende sus ovejas y viaja a África siguiendo un sueño recurrente: hay un tesoro escondido cerca de las pirámides de Egipto. Dos veces tiene el mismo sueño, y la gitana que lo interpreta le dice que debe ir a buscarlo.
+
+En el camino conoce:
+• El Rey Melquisedec (Melchizedek) — Un anciano misterioso que se presenta como el rey de Salem y le explica la Leyenda Personal y el Alma del Mundo.
+• El vendedor de cristales en Tánger — Le da trabajo cuando Santiago pierde todo su dinero. Le enseña que hay personas que sueñan con cambiar su vida pero nunca actúan.
+• El inglés — Busca al Alquimista para aprender a convertir plomo en oro. Representa la búsqueda intelectual que no conecta con el corazón.
+• Fátima — La mujer que Santiago ama en el oasis de Al-Fayum. Le enseña que el amor verdadero no retiene; deja ir.
+• El Alquimista — El maestro final. Un viejo alquimista que domina el Lenguaje del Mundo.
+
+LA LEYENDA PERSONAL
+El concepto central del libro: cada persona tiene una misión única en la vida, algo que debe cumplir. El universo conspira a favor de quien persigue su Leyenda Personal. El mayor obstáculo no son los enemigos externos, sino el miedo propio y la comodidad que nos hace abandonar el camino.
+
+"Cuando quieres algo, todo el universo conspira para que realices tu deseo."
+
+EL ALMA DEL MUNDO
+Coelho propone que todo en el universo está conectado por una fuerza espiritual que él llama el Alma del Mundo. Quien aprende a escuchar esta fuerza puede comunicarse con todas las cosas: las piedras, el viento, el sol, el desierto.
+
+El Alquimista le enseña a Santiago a hablar con el viento y el sol, lo que le salva la vida cuando los ladrones del desierto lo amenazan.
+
+EL LENGUAJE DEL MUNDO
+Las señales del universo: coincidencias significativas, sueños repetidos, presagios. Santiago aprende a leerlos. No son superstición; son el idioma en que el Alma del Mundo se comunica con quienes están atentos.
+
+EL GRAN GIRO FINAL
+Después de cruzar el desierto, superar múltiples pruebas y casi morir, Santiago llega a las pirámides... y no encuentra nada. Mientras llora, unos ladrones lo golpean y roban. Uno de ellos, burlándose, menciona que él también tuvo un sueño repetido sobre un tesoro —bajo un árbol en una iglesia en ruinas de España.
+
+Santiago regresa a España, va a la iglesia abandonada donde dormía con sus ovejas al inicio de la historia... y encuentra el tesoro enterrado allí.
+
+El tesoro siempre estuvo en su punto de partida. El viaje era necesario no para encontrarlo, sino para aprender a merecerlo y a reconocerlo.
+
+TEMAS
+• El valor de seguir los sueños propios, no los ajenos.
+• El miedo como principal enemigo del ser humano.
+• El proceso del viaje es el verdadero destino.
+• La alquimia como metáfora de la transformación personal.
+• El amor que libera versus el amor que ata.
+
+SÍMBOLOS CLAVE
+• Las ovejas — La vida cómoda pero sin propósito.
+• El plomo y el oro — La transformación del ser ordinario al ser que realiza su potencial.
+• El desierto — Las pruebas extremas que revelan el carácter.
+• Las pirámides — El destino soñado, siempre en el horizonte.
+
+FRASES MEMORABLES
+"Cuando quieres algo, todo el universo conspira para que realices tu deseo."
+
+"Solo una cosa hace que un sueño sea imposible: el miedo al fracaso."
+
+"Nadie puede huir de su propio corazón. Por eso es mejor escuchar lo que este tiene para decir."
+
+"Las personas necesitan muy pocas cosas para ser felices en este mundo. Pero son incapaces de que eso les baste."
+
+"Recuerda que el corazón sabe a dónde ir. Solo tenemos que seguirlo."`
+  },
+  {
+    id: 'b9',
+    title: 'Introducción a la Programación con Python',
+    author: 'Lumina Editorial',
+    cat: 'Tecnología',
+    year: 2024,
+    desc: 'Guía completa para aprender programación desde cero usando Python. Incluye variables, estructuras de control, funciones, listas, diccionarios, y proyectos prácticos. Ideal para estudiantes, autodidactas y cualquier persona sin experiencia previa.',
+    content: `INTRODUCCIÓN A LA PROGRAMACIÓN CON PYTHON
+Lumina Editorial — 2024
+
+━━━━━━━━━━━━━━━━━━━━━━━━━
+
+¿QUÉ ES PYTHON?
+Python es un lenguaje de programación de alto nivel, interpretado y de propósito general. Fue creado por Guido van Rossum y publicado en 1991. Su filosofía es que el código debe ser legible y simple. Hoy es el lenguaje más popular del mundo, usado en:
+• Inteligencia Artificial y Machine Learning
+• Desarrollo web (Django, Flask)
+• Ciencia de datos (Pandas, NumPy)
+• Automatización y scripts
+• Videojuegos (Pygame)
+
+CAPÍTULO 1 — TU PRIMER PROGRAMA
+
+El programa más simple en Python:
+    print("¡Hola, mundo!")
+
+Este código imprime el mensaje en pantalla. En Python no necesitas punto y coma ni llaves. La legibilidad es una prioridad.
+
+CAPÍTULO 2 — VARIABLES Y TIPOS DE DATOS
+
+Las variables guardan información:
+    nombre = "María"
+    edad = 25
+    altura = 1.65
+    es_estudiante = True
+
+Tipos de datos básicos:
+• str (texto): "Hola", 'mundo'
+• int (entero): 42, -7, 0
+• float (decimal): 3.14, -0.5
+• bool (verdadero/falso): True, False
+
+Puedes pedir datos al usuario:
+    nombre = input("¿Cómo te llamas? ")
+    print("Hola,", nombre)
+
+CAPÍTULO 3 — OPERACIONES
+
+Aritméticas: + - * / // % **
+    suma = 10 + 5       # 15
+    division = 10 / 3   # 3.333...
+    entero = 10 // 3    # 3
+    modulo = 10 % 3     # 1
+    potencia = 2 ** 8   # 256
+
+De texto (strings):
+    saludo = "Hola" + " " + "mundo"   # concatenar
+    repetir = "ja" * 3                 # "jajaja"
+    largo = len("Python")              # 6
+
+CAPÍTULO 4 — CONDICIONALES
+
+    edad = int(input("¿Cuántos años tienes? "))
+    
+    if edad >= 18:
+        print("Eres mayor de edad")
+    elif edad >= 13:
+        print("Eres adolescente")
+    else:
+        print("Eres niño")
+
+CAPÍTULO 5 — BUCLES
+
+While (mientras):
+    contador = 1
+    while contador <= 5:
+        print(contador)
+        contador += 1
+
+For (para cada elemento):
+    frutas = ["manzana", "banana", "naranja"]
+    for fruta in frutas:
+        print("Me gusta la", fruta)
+
+    for i in range(10):   # 0, 1, 2, ... 9
+        print(i)
+
+CAPÍTULO 6 — FUNCIONES
+
+Las funciones son bloques de código reutilizables:
+    def saludar(nombre):
+        return "¡Hola, " + nombre + "!"
+    
+    mensaje = saludar("Carlos")
+    print(mensaje)   # ¡Hola, Carlos!
+
+    def sumar(a, b):
+        return a + b
+    
+    resultado = sumar(3, 7)   # 10
+
+CAPÍTULO 7 — LISTAS
+
+    estudiantes = ["Ana", "Luis", "María", "Carlos"]
+    
+    print(estudiantes[0])    # Ana (índice empieza en 0)
+    print(estudiantes[-1])   # Carlos (último)
+    
+    estudiantes.append("Sofía")    # agregar
+    estudiantes.remove("Luis")     # eliminar
+    estudiantes.sort()             # ordenar
+    
+    # Recorrer con índice
+    for i, nombre in enumerate(estudiantes):
+        print(i+1, nombre)
+
+CAPÍTULO 8 — DICCIONARIOS
+
+    persona = {
+        "nombre": "Ana",
+        "edad": 22,
+        "ciudad": "Guatemala"
+    }
+    
+    print(persona["nombre"])       # Ana
+    persona["profesion"] = "Médica"  # agregar clave
+    
+    for clave, valor in persona.items():
+        print(clave, ":", valor)
+
+PROYECTO PRÁCTICO — LISTA DE TAREAS
+    tareas = []
+    
+    while True:
+        print("\\n1. Agregar tarea")
+        print("2. Ver tareas")
+        print("3. Salir")
+        opcion = input("Elige una opción: ")
+        
+        if opcion == "1":
+            tarea = input("Nueva tarea: ")
+            tareas.append(tarea)
+        elif opcion == "2":
+            for i, t in enumerate(tareas):
+                print(f"{i+1}. {t}")
+        elif opcion == "3":
+            break
+
+CONSEJOS FINALES
+• Practica todos los días, aunque sea 15 minutos.
+• No copies el código; escríbelo tú mismo para aprenderlo mejor.
+• Cuando algo falla, lee el mensaje de error — Python te dice exactamente qué está mal.
+• Usa recursos gratuitos: Python.org, W3Schools, freeCodeCamp.
+• El mejor proyecto es el que resuelve un problema real tuyo.`
+  },
+  {
+    id: 'b10',
+    title: 'La Odisea',
+    author: 'Homero',
+    cat: 'Literatura',
+    year: -800,
+    desc: 'El épico poema griego que narra el viaje de Odiseo (Ulises) de regreso a Ítaca tras la caída de Troya. Diez años de aventuras, monstruos, dioses y amor conyugal que dieron forma a toda la literatura occidental posterior.',
+    content: `LA ODISEA
+Homero — Siglo VIII a.C.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━
+
+SOBRE LA OBRA
+La Odisea es uno de los dos grandes poemas épicos atribuidos al poeta griego Homero (el otro es la Ilíada). Compuesta alrededor del siglo VIII a.C., narra el viaje de regreso de Odiseo desde Troya hasta su hogar en Ítaca —un viaje que debería durar semanas pero que, por la ira de Poseidón y otras causas, dura diez años. Junto con la Ilíada, es la obra fundacional de la literatura occidental.
+
+ESTRUCTURA
+La obra tiene 24 cantos y 12.110 versos. Se divide en tres partes:
+1. La Telemaquia (cantos 1-4): El joven Telémaco, hijo de Odiseo, busca noticias de su padre.
+2. Las aventuras de Odiseo (cantos 5-12): Los viajes y peligros de Odiseo.
+3. El regreso y la venganza (cantos 13-24): Odiseo llega a Ítaca y se venga de los pretendientes.
+
+LOS PERSONAJES
+• Odiseo (Ulises en latín) — El héroe. Famoso no por su fuerza sino por su astucia e inteligencia ("el de múltiples recursos").
+• Penélope — Su fiel esposa. Espera 20 años y resiste a cientos de pretendientes con una estratagema: teje un sudario durante el día y lo desteje por las noches.
+• Telémaco — Su hijo. Cuando comienza la historia, tiene 20 años y nunca ha conocido a su padre.
+• Atenea — Diosa de la sabiduría, protectora de Odiseo.
+• Poseidón — Dios del mar, enemigo de Odiseo por haber cegado a su hijo el Cíclope Polifemo.
+• Circe — Hechicera que convierte a los hombres en cerdos.
+• Calipso — Ninfa que retiene a Odiseo en su isla por 7 años.
+
+LAS AVENTURAS MÁS FAMOSAS
+
+LOS CÍCLOPES (Canto IX)
+Odiseo y su tripulación llegan a la tierra de los Cíclopes —gigantes de un solo ojo. Quedan atrapados en la cueva de Polifemo, hijo de Poseidón, quien empieza a comerse a los hombres de dos en dos. Odiseo lo emborracha con vino y lo ciega clavándole en el ojo una estaca afilada y enrojecida al fuego. Para escapar, los hombres se esconden bajo el vientre de las ovejas del Cíclope. Cuando Polifemo pregunta el nombre del responsable, Odiseo le dijo que su nombre era "Nadie" —así, cuando el Cíclope herido grita a los demás Cíclopes que "Nadie" lo ha cegado, ninguno acude en su ayuda.
+
+Error fatal: al alejarse en el barco, Odiseo grita su nombre real a Polifemo. Así Poseidón sabe quién lo cegó y comienza a perseguirlo.
+
+LA ISLA DE CIRCE (Cantos X-XI)
+La hechicera Circe convierte a los hombres de Odiseo en cerdos. Odiseo, protegido por una hierba mágica que le dio Hermes, la vence. Viven en su isla un año. Circe le indica que debe descender al Hades (el mundo de los muertos) para consultar al adivino Tiresias.
+
+EN EL HADES (Canto XI)
+Odiseo habla con los muertos: su madre, que murió de pena por su ausencia; el héroe Aquiles, que en vida eligió la gloria antes que una larga vida; y el adivino Tiresias, que le indica el camino de regreso.
+
+LAS SIRENAS (Canto XII)
+Las Sirenas son criaturas que cantan con voces irresistibles; quien las escucha se lanza al mar y muere. Circe advierte a Odiseo. Este ordena tapar los oídos de sus hombres con cera, y él se hace atar al mástil para escucharlas sin poder lanzarse. Es el único mortal que escucha el canto de las Sirenas y vive.
+
+ESCILA Y CARIBDIS
+Entre un monstruo de seis cabezas (Escila) y un torbellino mortal (Caribdis), Odiseo elige pasar cerca de Escila: pierde seis hombres pero el barco sobrevive.
+
+EL REGRESO A ÍTACA (Cantos 13-24)
+Odiseo llega a Ítaca disfrazado de mendigo. En su palacio, más de cien pretendientes devoran sus bienes y cortejan a Penélope. Penélope, acosada, anuncia que se casará con quien pueda tensar el arco de Odiseo y disparar a través de doce hachas alineadas. Nadie puede. El mendigo (Odiseo) lo hace con facilidad. Se revela y mata a todos los pretendientes con la ayuda de su hijo Telémaco y dos siervos fieles.
+
+TEMAS
+• El hogar como destino supremo: todo el viaje es para volver a Penélope.
+• La astucia versus la fuerza bruta.
+• La fidelidad: Penélope y su telar; Odiseo que resiste a Circe y Calipso.
+• La hospitalidad (xenia): una obligación sagrada en la Grecia antigua.
+• La identidad: Odiseo debe revelar quién es al final para reclamar su vida.
+
+LEGADO
+La Odisea inventó el género de la novela de aventuras. Influenció a Virgilio (La Eneida), a Joyce (Ulises), a Kavafis (Ítaca) y a prácticamente toda la literatura de viajes. La palabra "odisea" en todos los idiomas modernos significa un viaje largo y lleno de aventuras, en honor a este poema.
+
+"El poema de Homero es el origen de toda la literatura de viaje, toda novela de aventuras, toda historia de regreso a casa." — Jorge Luis Borges`
+  }
+];
+
+if (books.length === 0) {
+  books = DEFAULT_BOOKS;
+  saveBooks();
+} else {
+  // Agregar libros nuevos que no existan aún (por si el usuario ya tiene datos)
+  let added = false;
+  DEFAULT_BOOKS.forEach(db => {
+    if (!books.find(b => b.id === db.id)) {
+      books.push(db);
+      added = true;
+    }
+  });
+  if (added) saveBooks();
+}
+
+function saveUsers() { localStorage.setItem('lb_users', JSON.stringify(users)); }
+function saveBooks() { localStorage.setItem('lb_books', JSON.stringify(books)); }
+
+// ═══════════════════════════════════════════════
+//  VELAS DECORATIVAS
+// ═══════════════════════════════════════════════
+const bg = document.getElementById('bgScene');
+for (let i = 0; i < 8; i++) {
+  const c = document.createElement('div');
+  c.className = 'candle';
+  const h = 40 + Math.random() * 80;
+  c.style.cssText = `left:${5 + i*13}%;height:${h}px;animation-delay:${Math.random()*2}s;animation-duration:${2+Math.random()*2}s`;
+  bg.appendChild(c);
+}
+
+// ═══════════════════════════════════════════════
+//  AUTH
+// ═══════════════════════════════════════════════
+function switchTab(t) {
+  document.getElementById('tabLogin').classList.toggle('hidden', t !== 'login');
+  document.getElementById('tabRegister').classList.toggle('hidden', t !== 'register');
+  document.querySelectorAll('.tab-btn').forEach((b,i) => b.classList.toggle('active', (i===0) === (t==='login')));
+}
+
+function doLogin() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass = document.getElementById('loginPass').value;
+  const u = users.find(u => u.email === email && u.pass === pass);
+  const msg = document.getElementById('loginMsg');
+  if (!u) { msg.className='msg error'; msg.textContent='Correo o contraseña incorrectos.'; return; }
+  currentUser = u;
+  localStorage.setItem('lb_session', JSON.stringify(u));
+  openDashboard();
+}
+
+function doRegister() {
+  const name = document.getElementById('regName').value.trim();
+  const email = document.getElementById('regEmail').value.trim();
+  const pass = document.getElementById('regPass').value;
+  const role = document.getElementById('regRole').value;
+  const msg = document.getElementById('registerMsg');
+
+  if (!name || !email || !pass) { msg.className='msg error'; msg.textContent='Completa todos los campos.'; return; }
+  if (pass.length < 6) { msg.className='msg error'; msg.textContent='La contraseña debe tener al menos 6 caracteres.'; return; }
+  if (users.find(u => u.email === email)) { msg.className='msg error'; msg.textContent='Ese correo ya está registrado.'; return; }
+
+  const newUser = { id: 'u'+Date.now(), name, email, pass, role };
+  users.push(newUser);
+  saveUsers();
+  msg.className='msg success'; msg.textContent='¡Cuenta creada! Ahora inicia sesión.';
+  setTimeout(() => switchTab('login'), 1200);
+}
+
+function doLogout() {
+  currentUser = null;
+  localStorage.removeItem('lb_session');
+  const dash = document.getElementById('dashboard');
+  dash.classList.remove('active');
+  dash.style.display = 'none';
+  document.getElementById('authScreen').style.display = 'flex';
+  document.getElementById('bgScene').style.display = 'block';
+}
+
+function resetBooks() {
+  if (!confirm('¿Recargar todos los libros por defecto? Esto NO borra los libros que hayas agregado tú.')) return;
+  DEFAULT_BOOKS.forEach(db => {
+    if (!books.find(b => b.id === db.id)) books.push(db);
+  });
+  saveBooks();
+  updateStats();
+  alert('✓ Libros por defecto restaurados.');
+}
+
+// ═══════════════════════════════════════════════
+//  DASHBOARD
+// ═══════════════════════════════════════════════
+function openDashboard() {
+  document.getElementById('authScreen').style.display = 'none';
+  document.getElementById('bgScene').style.display = 'none';
+  const dash = document.getElementById('dashboard');
+  dash.style.display = 'flex';
+  dash.classList.add('active');
+
+  document.getElementById('topUserName').textContent = currentUser.name;
+  const badge = document.getElementById('topRoleBadge');
+  if (currentUser.role === 'admin') {
+    badge.textContent = 'Administrador'; badge.className = 'badge-role badge-admin';
+    document.getElementById('adminPanel').classList.remove('hidden');
+    document.getElementById('memberPanel').classList.add('hidden');
+    updateStats();
+  } else {
+    badge.textContent = 'Miembro'; badge.className = 'badge-role badge-member';
+    document.getElementById('memberPanel').classList.remove('hidden');
+    document.getElementById('adminPanel').classList.add('hidden');
+    renderMemberBooks();
+  }
+}
+
+// Auto-login si hay sesión
+if (currentUser) { document.addEventListener('DOMContentLoaded', openDashboard); } else {
+  document.getElementById('authScreen').style.display = 'flex';
+  document.getElementById('dashboard').style.display = 'none';
+}
+
+// ═══════════════════════════════════════════════
+//  TABS DE PANEL
+// ═══════════════════════════════════════════════
+const adminPanels = ['addBook','manageBooks','aiAdmin'];
+const memberPanels = ['catalog','aiMember'];
+
+function switchPanel(id) {
+  adminPanels.forEach(p => document.getElementById(p).classList.toggle('hidden', p !== id));
+  document.querySelectorAll('#adminPanel .panel-tab').forEach((b,i) => b.classList.toggle('active', adminPanels[i] === id));
+  if (id === 'manageBooks') renderAdminBooks();
+}
+
+function switchMemberPanel(id) {
+  memberPanels.forEach(p => document.getElementById(p).classList.toggle('hidden', p !== id));
+  document.querySelectorAll('#memberPanel .panel-tab').forEach((b,i) => b.classList.toggle('active', memberPanels[i] === id));
+}
+
+// ═══════════════════════════════════════════════
+//  LIBROS
+// ═══════════════════════════════════════════════
+function addBook() {
+  const title = document.getElementById('bookTitle').value.trim();
+  const author = document.getElementById('bookAuthor').value.trim();
+  const cat = document.getElementById('bookCat').value;
+  const year = document.getElementById('bookYear').value;
+  const desc = document.getElementById('bookDesc').value.trim();
+  const content = document.getElementById('bookContent').value.trim();
+  const msg = document.getElementById('addBookMsg');
+
+  if (!title || !author || !desc) { msg.className='msg error'; msg.textContent='Completa título, autor y descripción.'; return; }
+
+  books.push({ id:'b'+Date.now(), title, author, cat, year: year||'—', desc, content, addedBy: currentUser.name, addedAt: new Date().toLocaleDateString('es-GT') });
+  saveBooks();
+  msg.className='msg success'; msg.textContent='✓ Libro agregado exitosamente al catálogo.';
+  ['bookTitle','bookAuthor','bookYear','bookDesc','bookContent'].forEach(id => document.getElementById(id).value='');
+  updateStats();
+  setTimeout(() => msg.textContent='', 3000);
+}
+
+function deleteBook(id) {
+  if (!confirm('¿Eliminar este libro del catálogo?')) return;
+  books = books.filter(b => b.id !== id);
+  saveBooks(); renderAdminBooks(); updateStats();
+}
+
+function updateStats() {
+  document.getElementById('statTotal').textContent = books.length;
+  document.getElementById('statMembers').textContent = users.filter(u=>u.role==='member').length;
+  document.getElementById('statCats').textContent = [...new Set(books.map(b=>b.cat))].length;
+}
+
+function renderAdminBooks() {
+  const q = (document.getElementById('adminSearch')?.value||'').toLowerCase();
+  const filtered = books.filter(b => b.title.toLowerCase().includes(q) || b.author.toLowerCase().includes(q));
+  const grid = document.getElementById('adminBooksGrid');
+  grid.innerHTML = filtered.length ? filtered.map(b => bookCard(b, true)).join('') :
+    `<div class="empty-state"><span class="icon">📭</span>No se encontraron libros</div>`;
+}
+
+function renderMemberBooks() {
+  const q = (document.getElementById('memberSearch')?.value||'').toLowerCase();
+  const cat = document.getElementById('catFilter')?.value||'';
+  const filtered = books.filter(b =>
+    (b.title.toLowerCase().includes(q) || b.author.toLowerCase().includes(q) || b.cat.toLowerCase().includes(q)) &&
+    (!cat || b.cat === cat)
+  );
+  const grid = document.getElementById('memberBooksGrid');
+  grid.innerHTML = filtered.length ? filtered.map(b => bookCard(b, false)).join('') :
+    `<div class="empty-state"><span class="icon">📭</span>No hay libros aún — pronto habrá nuevas adquisiciones</div>`;
+}
+
+function bookCard(b, isAdmin) {
+  const btns = isAdmin
+    ? `<button class="book-btn read" onclick="openModal('${b.id}')">👁 Ver</button>
+       <button class="book-btn del" onclick="deleteBook('${b.id}')">🗑 Eliminar</button>`
+    : `<button class="book-btn read" onclick="openModal('${b.id}')">📖 Leer</button>`;
+  return `<div class="book-card">
+    <div class="book-spine"></div>
+    <div class="book-body">
+      <div class="book-title">${b.title}</div>
+      <div class="book-author">${b.author} · ${b.year}</div>
+      <span class="book-cat">${b.cat}</span>
+      <div class="book-desc">${b.desc}</div>
+      <div class="book-actions">${btns}</div>
+    </div>
+  </div>`;
+}
+
+// ═══════════════════════════════════════════════
+//  MODAL
+// ═══════════════════════════════════════════════
+function openModal(id) {
+  const b = books.find(b=>b.id===id); if(!b) return;
+  document.getElementById('modalTitle').textContent = b.title;
+  document.getElementById('modalMeta').textContent = `${b.author} · ${b.cat} · ${b.year}`;
+  document.getElementById('modalContent').textContent = b.content || b.desc || 'Sin contenido adicional.';
+  // Actualizar barra superior del lector
+  document.getElementById('modalTitleBar').textContent = b.title;
+  document.getElementById('modalAuthorBar').textContent = b.author;
+  // Resetear scroll al inicio cada vez que se abre un libro
+  const readerBody = document.getElementById('readerBody');
+  readerBody.scrollTop = 0;
+  document.getElementById('modalOverlay').classList.add('open');
+}
+function closeModal() { document.getElementById('modalOverlay').classList.remove('open'); }
+document.getElementById('modalOverlay').addEventListener('click', e => { if(e.target.id==='modalOverlay') closeModal(); });
+
+// ═══════════════════════════════════════════════
+//  CHAT IA
+// ═══════════════════════════════════════════════
+function appendChat(boxId, role, text) {
+  const box = document.getElementById(boxId);
+  const div = document.createElement('div');
+  div.className = `chat-msg ${role}`;
+  div.innerHTML = `<div class="who">${role==='user'?'Tú':'Asistente Lumina'}</div><div class="text">${text}</div>`;
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+}
+
+async function sendChat(who) {
+  const inputId = who==='admin' ? 'chatAdminInput' : 'chatMemberInput';
+  const boxId   = who==='admin' ? 'chatAdminBox'   : 'chatMemberBox';
+  const btnId   = who==='admin' ? 'chatAdminBtn'   : 'chatMemberBtn';
+  const input   = document.getElementById(inputId);
+  const msg     = input.value.trim();
+  if (!msg) return;
+  input.value = '';
+  appendChat(boxId, 'user', msg);
+  document.getElementById(btnId).disabled = true;
+  appendChat(boxId, 'ai', '⏳ Pensando...');
+
+  const catalogSummary = books.map(b=>`"${b.title}" de ${b.author} (${b.cat})`).join(', ') || 'Catálogo vacío';
+  const systemPrompt = who === 'admin'
+    ? `Eres un asistente experto en bibliotecas para el administrador de Lumina Biblioteca Virtual. El catálogo actual tiene: ${catalogSummary}. Ayuda con gestión, organización, sugerencias de libros a adquirir, estadísticas y mejores prácticas. Responde en español, sé conciso y útil.`
+    : `Eres un recomendador de libros amigable de Lumina Biblioteca Virtual. El catálogo disponible incluye: ${catalogSummary}. Recomienda libros del catálogo cuando sea posible, y también sugiere otros títulos relacionados. Responde en español, con entusiasmo por la lectura.`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:1000,
+        system: systemPrompt,
+        messages:[{role:'user',content:msg}]
+      })
+    });
+    const data = await res.json();
+    const reply = data.content?.[0]?.text || 'No pude procesar la respuesta.';
+    const box = document.getElementById(boxId);
+    box.lastChild.querySelector('.text').textContent = reply;
+  } catch(e) {
+    document.getElementById(boxId).lastChild.querySelector('.text').textContent = 'Error de conexión con IA.';
+  }
+  document.getElementById(btnId).disabled = false;
+}
+
+// Init estado
+function initApp() {
+  if (currentUser) {
+    document.getElementById('authScreen').style.display = 'none';
+    document.getElementById('bgScene').style.display = 'none';
+    openDashboard();
+  } else {
+    document.getElementById('authScreen').style.display = 'flex';
+    document.getElementById('bgScene').style.display = 'block';
+    document.getElementById('dashboard').style.display = 'none';
+  }
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initApp);
+} else {
+  initApp();
+}
+</script>
+</body>
+</html>
